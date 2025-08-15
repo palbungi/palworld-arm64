@@ -17,7 +17,7 @@ After=docker.service
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu
-ExecStart=/home/ubuntu/palworld-monitor-v2.sh
+ExecStart=/home/ubuntu/palworld-monitor.sh
 Restart=always
 RestartSec=10s
 
