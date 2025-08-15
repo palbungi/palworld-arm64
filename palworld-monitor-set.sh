@@ -6,7 +6,7 @@ nano /home/ubuntu/palworld-monitor.sh
 # 위 스크립트 내용 복사 후 저장
 
 # 실행 권한 부여
-chmod +x /home/ubuntu/palworld-monitor-v2.sh
+chmod +x /home/ubuntu/palworld-monitor.sh
 
 # Systemd 서비스 파일 생성
 sudo tee /etc/systemd/system/palworld-monitor.service > /dev/null <<EOF
