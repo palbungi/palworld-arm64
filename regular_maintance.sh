@@ -6,7 +6,7 @@ REBOOT_MSG="Server_is_going_to_reboot_in_"
 
 # RCON 명령어 실행 함수
 rcon() {
-    echo "$1" | ARRCON -P $RCON_PORT -p $ADMIN_PASSWORD
+    echo "$1" | ./ARRCON -P $RCON_PORT -p $ADMIN_PASSWORD
 }
 
 # 초기 저장 및 종료 예약
