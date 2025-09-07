@@ -18,4 +18,4 @@ else
     fi
 fi
 chmod +x "$UE_PROJECT_ROOT/Pal/Binaries/Linux/PalServer-Linux-Shipping"
-LD_PRELOAD="$UE_PROJECT_ROOT/Pal/Binaries/Linux/libUE4SS.so" "$UE_PROJECT_ROOT/Pal/Binaries/Linux/PalServer-Linux-Shipping" Pal "$@"
+LD_PRELOAD="$UE_PROJECT_ROOT/Pal/Binaries/Linux/libUE4SS.so" "$UE_PROJECT_ROOT/Pal/Binaries/Linux/PalServer-Linux-Shipping" Pal -useperfthreads -asyncLoadingThread -DisableMultithreadForDS -queryport=27018 -publiclobby -DisableGPU -ServerFPS=120 -MaxServerFPS=144 -NoAsyncLoadingThread -UseSpectre -ForceAllowCpuTargeting "$@"
