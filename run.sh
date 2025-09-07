@@ -132,9 +132,9 @@ show_server_status() {
     echo -e "╠════════════════════════════════════╣"
     
     if [ "$pal_status" = "RUNNING" ]; then
-        echo -e "║  ${GREEN}✅ PalServer.sh: 실행 중${BLUE}           ║"
+        echo -e "║  ${GREEN}✅ PalServer.sh: 실행 중${BLUE}          ║"
     else
-        echo -e "║  ${RED}❌ PalServer.sh: 중지됨${BLUE}            ║"
+        echo -e "║  ${RED}❌ PalServer.sh: 중지됨${BLUE}           ║"
     fi
     
     if [ "$fex_status" = "RUNNING" ]; then
@@ -150,8 +150,8 @@ show_server_status() {
     fi
     
     echo -e "╠════════════════════════════════════╣"
-    echo -e "║  ${CYAN}📝 로그 파일: ${BLUE}                   ║"
-    echo -e "║  ${CYAN}$(echo "$DAILY_LOG_FILE" | cut -c1-30)${BLUE} ║"
+    echo -e "║  ${CYAN}📝 로그 파일: ${BLUE}                    ║"
+    echo -e "║  ${CYAN}$(echo "$DAILY_LOG_FILE" | cut -c1-30)${BLUE}    ║"
     echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -159,7 +159,7 @@ show_server_status() {
 # 함수: 서버 실행 중일 때 메뉴
 server_running_menu() {
     echo -e "${PURPLE}╔════════════════════════════════════╗"
-    echo -e "║     PalWorld 서버 관리 메뉴      ║"
+    echo -e "║     PalWorld 서버 관리 메뉴        ║"
     echo -e "╠════════════════════════════════════╣"
     echo -e "║  ${WHITE}1. ${RED}🔴 서버 중지${PURPLE}                   ║"
     echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기${PURPLE}                   ║"
@@ -193,7 +193,7 @@ server_running_menu() {
 # 함수: 서버 중지 시 메뉴
 server_stopped_menu() {
     echo -e "${PURPLE}╔════════════════════════════════════╗"
-    echo -e "║     PalWorld 서버 관리 메뉴      ║"
+    echo -e "║     PalWorld 서버 관리 메뉴        ║"
     echo -e "╠════════════════════════════════════╣"
     echo -e "║  ${WHITE}1. ${GREEN}🚀 서버 시작${PURPLE}                   ║"
     echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기${PURPLE}                   ║"
