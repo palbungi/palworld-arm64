@@ -46,7 +46,16 @@ check_pal_server_process() {
 
 # 함수: FEX-EMU 프로세스 확인
 check_fex_emu_process() {
-    if ps aux | grep -v grep | grep -q "fex-emu.*PalServer-Linux-Shipping"; then
+    if ps aux | grep -v grep | grep -q "FEXInterpreter.*PalServer-Linux-Shipping"; then
+        echo "RUNNING"
+    else
+        echo "STOPPED"
+    fi
+}
+
+# 함수: PalServer-Linux-Shipping 프로세스 확인
+check_pal_binary_process() {
+    if ps aux | grep -v grep | grep -q "PalServer-Linux-Shipping"; then
         echo "RUNNING"
     else
         echo "STOPPED"
@@ -74,20 +83,22 @@ stop_server() {
     print_color "${YELLOW}" "🛑 서버를 종료합니다..."
     log_message "서버 종료 시도"
     
-    # PalServer.sh 프로세스 종료
+    # 모든 관련 프로세스 종료
     pkill -f "$PAL_SERVER_SCRIPT"
-    
-    # FEX-EMU 프로세스 종료
-    pkill -f "fex-emu.*PalServer-Linux-Shipping"
+    pkill -f "FEXInterpreter.*PalServer-Linux-Shipping"
+    pkill -f "PalServer-Linux-Shipping"
     
     sleep 3
     
-    # 강제 종료 시도
-    if [ "$(check_pal_server_process)" = "RUNNING" ] || [ "$(check_fex_emu_process)" = "RUNNING" ]; then
+    # 강제 종료 시도 (여전히 실행 중인 프로세스가 있는 경우)
+    if [ "$(check_pal_server_process)" = "RUNNING" ] || 
+       [ "$(check_fex_emu_process)" = "RUNNING" ] || 
+       [ "$(check_pal_binary_process)" = "RUNNING" ]; then
         print_color "${RED}" "⚠️  강제 종료를 시도합니다..."
         log_message "강제 종료 시도"
         pkill -9 -f "$PAL_SERVER_SCRIPT"
-        pkill -9 -f "fex-emu.*PalServer-Linux-Shipping"
+        pkill -9 -f "FEXInterpreter.*PalServer-Linux-Shipping"
+        pkill -9 -f "PalServer-Linux-Shipping"
     fi
     
     # PID 파일 정리
@@ -114,6 +125,7 @@ show_logs() {
 show_server_status() {
     local pal_status=$(check_pal_server_process)
     local fex_status=$(check_fex_emu_process)
+    local binary_status=$(check_pal_binary_process)
     
     echo -e "${BLUE}╔════════════════════════════════════╗"
     echo -e "║           ${WHITE}서버 상태 정보${BLUE}           ║"
@@ -126,9 +138,15 @@ show_server_status() {
     fi
     
     if [ "$fex_status" = "RUNNING" ]; then
-        echo -e "║  ${GREEN}✅ FEX-EMU 프로세스: 실행 중${BLUE}      ║"
+        echo -e "║  ${GREEN}✅ FEXInterpreter: 실행 중${BLUE}        ║"
     else
-        echo -e "║  ${RED}❌ FEX-EMU 프로세스: 중지됨${BLUE}       ║"
+        echo -e "║  ${RED}❌ FEXInterpreter: 중지됨${BLUE}         ║"
+    fi
+    
+    if [ "$binary_status" = "RUNNING" ]; then
+        echo -e "║  ${GREEN}✅ PalServer-Linux-Shipping: 실행 중${BLUE} ║"
+    else
+        echo -e "║  ${RED}❌ PalServer-Linux-Shipping: 중지됨${BLUE}  ║"
     fi
     
     echo -e "╠════════════════════════════════════╣"
@@ -225,12 +243,13 @@ main() {
     # 서버 상태 확인
     local pal_status=$(check_pal_server_process)
     local fex_status=$(check_fex_emu_process)
+    local binary_status=$(check_pal_binary_process)
     
     # 서버 상태 표시
     show_server_status
     
     # 메뉴 표시
-    if [ "$pal_status" = "RUNNING" ] || [ "$fex_status" = "RUNNING" ]; then
+    if [ "$pal_status" = "RUNNING" ] || [ "$fex_status" = "RUNNING" ] || [ "$binary_status" = "RUNNING" ]; then
         print_color "${GREEN}" "✅ 서버가 실행 중입니다."
         server_running_menu
     else
