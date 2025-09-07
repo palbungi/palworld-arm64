@@ -28,23 +28,6 @@ print_color() {
     echo -e "${color}${message}${NC}"
 }
 
-# 함수: 문자열 길이 계산 (한글/영문 혼합)
-string_length() {
-    local str=$1
-    # 한글은 2자, 영문/숫자는 1자로 계산
-    local len=$(echo -n "$str" | sed 's/[가-힣]/XX/g' | wc -c)
-    echo $((len - 1))
-}
-
-# 함수: 공백 채우기
-fill_space() {
-    local total_len=$1
-    local str=$2
-    local str_len=$(string_length "$str")
-    local space_count=$((total_len - str_len))
-    printf "%*s" $space_count ""
-}
-
 # 함수: 로그 기록
 log_message() {
     local message=$1
@@ -138,63 +121,50 @@ show_logs() {
     echo ""
 }
 
-# 함수: 서버 상태 표시
+# 함수: 서버 상태 표시 (간단한 버전)
 show_server_status() {
     local pal_status=$(check_pal_server_process)
     local fex_status=$(check_fex_emu_process)
     local binary_status=$(check_pal_binary_process)
     
-    local box_width=50
+    echo -e "${BLUE}╔════════════════════════════════════╗"
+    echo -e "║           서버 상태 정보           ║"
+    echo -e "╠════════════════════════════════════╣"
     
-    echo -e "${BLUE}╔══════════════════════════════════════════════╗"
-    echo -e "║$(fill_space $((box_width-2)) "서버 상태 정보") ${BLUE}║"
-    echo -e "╠══════════════════════════════════════════════╣"
-    
-    # PalServer.sh 상태
-    local pal_text="PalServer.sh: $([ "$pal_status" = "RUNNING" ] && echo -e "${GREEN}실행 중${BLUE}" || echo -e "${RED}중지됨${BLUE}")"
-    echo -e "║  $pal_text$(fill_space $((box_width-4 - $(string_length "$pal_text"))) )║"
-    
-    # FEXInterpreter 상태
-    local fex_text="FEXInterpreter: $([ "$fex_status" = "RUNNING" ] && echo -e "${GREEN}실행 중${BLUE}" || echo -e "${RED}중지됨${BLUE}")"
-    echo -e "║  $fex_text$(fill_space $((box_width-4 - $(string_length "$fex_text"))) )║"
-    
-    # PalServer-Linux-Shipping 상태
-    local binary_text="PalServer-Linux-Shipping: $([ "$binary_status" = "RUNNING" ] && echo -e "${GREEN}실행 중${BLUE}" || echo -e "${RED}중지됨${BLUE}")"
-    echo -e "║  $binary_text$(fill_space $((box_width-4 - $(string_length "$binary_text"))) )║"
-    
-    echo -e "╠══════════════════════════════════════════════╣"
-    
-    # 로그 파일 정보
-    local log_text="📝 로그 파일:"
-    echo -e "║  ${CYAN}$log_text$(fill_space $((box_width-4 - $(string_length "$log_text"))) )${BLUE}║"
-    
-    # 로그 파일 경로 (줄바꿈 처리)
-    local log_path="$DAILY_LOG_FILE"
-    if [ $(string_length "$log_path") -gt $((box_width-6)) ]; then
-        # 긴 경로는 두 줄로 표시
-        local first_part="${log_path:0:$((box_width-6))}"
-        local second_part="${log_path:$((box_width-6))}"
-        echo -e "║  ${CYAN}$first_part$(fill_space $((box_width-4 - $(string_length "$first_part"))) )${BLUE}║"
-        echo -e "║  ${CYAN}$second_part$(fill_space $((box-width-4 - $(string_length "$second_part"))) )${BLUE}║"
+    if [ "$pal_status" = "RUNNING" ]; then
+        echo -e "║  ${GREEN}✅ PalServer.sh: 실행 중${BLUE}           ║"
     else
-        echo -e "║  ${CYAN}$log_path$(fill_space $((box_width-4 - $(string_length "$log_path"))) )${BLUE}║"
+        echo -e "║  ${RED}❌ PalServer.sh: 중지됨${BLUE}            ║"
     fi
     
-    echo -e "╚══════════════════════════════════════════════╝${NC}"
+    if [ "$fex_status" = "RUNNING" ]; then
+        echo -e "║  ${GREEN}✅ FEXInterpreter: 실행 중${BLUE}        ║"
+    else
+        echo -e "║  ${RED}❌ FEXInterpreter: 중지됨${BLUE}         ║"
+    fi
+    
+    if [ "$binary_status" = "RUNNING" ]; then
+        echo -e "║  ${GREEN}✅ PalServer: 실행 중${BLUE}             ║"
+    else
+        echo -e "║  ${RED}❌ PalServer: 중지됨${BLUE}              ║"
+    fi
+    
+    echo -e "╠════════════════════════════════════╣"
+    echo -e "║  ${CYAN}📝 로그 파일: ${BLUE}                   ║"
+    echo -e "║  ${CYAN}$(echo "$DAILY_LOG_FILE" | cut -c1-30)${BLUE} ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
 }
 
 # 함수: 서버 실행 중일 때 메뉴
 server_running_menu() {
-    local box_width=50
-    
-    echo -e "${PURPLE}╔══════════════════════════════════════════════╗"
-    echo -e "║$(fill_space $((box_width-2)) "PalWorld 서버 관리 메뉴") ${PURPLE}║"
-    echo -e "╠══════════════════════════════════════════════╣"
-    echo -e "║  ${WHITE}1. ${RED}🔴 서버 중지$(fill_space $((box_width-12))) ${PURPLE}║"
-    echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기$(fill_space $((box_width-12))) ${PURPLE}║"
-    echo -e "║  ${WHITE}3. ${YELLOW}🚫 스크립트 종료$(fill_space $((box_width-16))) ${PURPLE}║"
-    echo -e "╚══════════════════════════════════════════════╝${NC}"
+    echo -e "${PURPLE}╔════════════════════════════════════╗"
+    echo -e "║     PalWorld 서버 관리 메뉴      ║"
+    echo -e "╠════════════════════════════════════╣"
+    echo -e "║  ${WHITE}1. ${RED}🔴 서버 중지${PURPLE}                   ║"
+    echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기${PURPLE}                   ║"
+    echo -e "║  ${WHITE}3. ${YELLOW}🚫 스크립트 종료${PURPLE}               ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
     
     echo -e "${BOLD}${CYAN}"
@@ -222,15 +192,13 @@ server_running_menu() {
 
 # 함수: 서버 중지 시 메뉴
 server_stopped_menu() {
-    local box_width=50
-    
-    echo -e "${PURPLE}╔══════════════════════════════════════════════╗"
-    echo -e "║$(fill_space $((box_width-2)) "PalWorld 서버 관리 메뉴") ${PURPLE}║"
-    echo -e "╠══════════════════════════════════════════════╣"
-    echo -e "║  ${WHITE}1. ${GREEN}🚀 서버 시작$(fill_space $((box_width-12))) ${PURPLE}║"
-    echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기$(fill_space $((box_width-12))) ${PURPLE}║"
-    echo -e "║  ${WHITE}3. ${YELLOW}🚫 스크립트 종료$(fill_space $((box_width-16))) ${PURPLE}║"
-    echo -e "╚══════════════════════════════════════════════╝${NC}"
+    echo -e "${PURPLE}╔════════════════════════════════════╗"
+    echo -e "║     PalWorld 서버 관리 메뉴      ║"
+    echo -e "╠════════════════════════════════════╣"
+    echo -e "║  ${WHITE}1. ${GREEN}🚀 서버 시작${PURPLE}                   ║"
+    echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기${PURPLE}                   ║"
+    echo -e "║  ${WHITE}3. ${YELLOW}🚫 스크립트 종료${PURPLE}               ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
     
     echo -e "${BOLD}${CYAN}"
@@ -263,12 +231,12 @@ main() {
     
     # 헤더 출력
     echo -e "${BLUE}"
-    echo "██████╗  █████╗ ██╗    ██╗    ██╗ ██████╗ ██████╗ ██╗     ██████╗ "
-    echo "██╔══██╗██╔══██╗██║    ██║    ██║██╔═══██╗██╔══██╗██║     ██╔══██╗"
-    echo "██████╔╝███████║██║    ██║ █╗ ██║██║   ██║██████╔╝██║     ██║  ██║"
-    echo "██╔═══╝ ██╔══██║██║    ██║███╗██║██║   ██║██╔══██╗██║     ██║  ██║"
-    echo "██║     ██║  ██║███████║╚███╔███╔╝╚██████╔╝██║  ██║███████╗██████╔╝"
-    echo "╚═╝     ╚═╝  ╚═╝╚══════╝ ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═════╝ "
+    echo "██████╗  █████╗ ██╗     ██╗    ██╗    ██╗ ██████╗ ██████╗ ██╗     ██████╗ "
+    echo "██╔══██╗██╔══██╗██║     ██║    ██║    ██║██╔═══██╗██╔══██╗██║     ██╔══██╗"
+    echo "██████╔╝███████║██║     ██║    ██║ █╗ ██║██║   ██║██████╔╝██║     ██║  ██║"
+    echo "██╔═══╝ ██╔══██║██║     ██║    ██║███╗██║██║   ██║██╔══██╗██║     ██║  ██║"
+    echo "██║     ██║  ██║███████╗███████║╚███╔███╔╝╚██████╔╝██║  ██║███████╗██████╔╝"
+    echo "╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝ ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═════╝ "
     echo -e "${NC}"
     echo ""
     
