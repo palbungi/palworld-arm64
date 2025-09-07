@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 색상 정의
+# ANSI 색상 정의
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
@@ -13,8 +13,13 @@ NC='\033[0m' # No Color
 
 # 설정
 PAL_SERVER_SCRIPT="/home/ubuntu/palworld-arm64/palworld/PalServer.sh"
-LOG_FILE="/dev/null"
+LOG_DIR="/home/ubuntu/palworld-arm64/log"
+DAILY_LOG_FILE="$LOG_DIR/palworld-server-$(date +%Y-%m-%d).log"
 PID_FILE="/tmp/palworld_server.pid"
+FEX_EMU_PID_FILE="/tmp/palworld_fex_emu.pid"
+
+# 로그 디렉토리 생성
+mkdir -p "$LOG_DIR"
 
 # 함수: 색상 출력
 print_color() {
@@ -23,68 +28,126 @@ print_color() {
     echo -e "${color}${message}${NC}"
 }
 
-# 함수: 서버 상태 확인
-check_server_status() {
-    if [ -f "$PID_FILE" ]; then
-        local pid=$(cat "$PID_FILE")
-        if kill -0 "$pid" 2>/dev/null; then
-            echo "RUNNING"
-        else
-            echo "STOPPED"
-        fi
+# 함수: 로그 기록
+log_message() {
+    local message=$1
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] $message" >> "$DAILY_LOG_FILE"
+}
+
+# 함수: PalServer.sh 프로세스 확인
+check_pal_server_process() {
+    if ps aux | grep -v grep | grep -q "$PAL_SERVER_SCRIPT"; then
+        echo "RUNNING"
     else
         echo "STOPPED"
     fi
 }
 
-# 함수: 서버 종료
-stop_server() {
-    if [ -f "$PID_FILE" ]; then
-        local pid=$(cat "$PID_FILE")
-        if kill -0 "$pid" 2>/dev/null; then
-            print_color "${YELLOW}" "서버를 종료합니다 (PID: $pid)..."
-            kill "$pid"
-            sleep 3
-            if kill -0 "$pid" 2>/dev/null; then
-                print_color "${RED}" "강제 종료를 시도합니다..."
-                kill -9 "$pid"
-            fi
-            rm -f "$PID_FILE"
-            print_color "${GREEN}" "✅ 서버가 종료되었습니다."
-        else
-            print_color "${YELLOW}" "서버가 이미 종료된 상태입니다."
-            rm -f "$PID_FILE"
-        fi
+# 함수: FEX-EMU 프로세스 확인
+check_fex_emu_process() {
+    if ps aux | grep -v grep | grep -q "fex-emu.*PalServer-Linux-Shipping"; then
+        echo "RUNNING"
     else
-        print_color "${YELLOW}" "서버가 실행 중이 아닙니다."
+        echo "STOPPED"
     fi
 }
 
-# 함수: 서버 재시작
-restart_server() {
-    stop_server
-    sleep 2
-    print_color "${CYAN}" "서버를 시작합니다..."
-    nohup "$PAL_SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
+# 함수: 서버 시작
+start_server() {
+    print_color "${CYAN}" "🚀 PalWorld 서버를 시작합니다..."
+    log_message "서버 시작 시도"
+    
+    # 백그라운드에서 실행
+    nohup "$PAL_SERVER_SCRIPT" >> "$DAILY_LOG_FILE" 2>&1 &
     local pid=$!
     echo $pid > "$PID_FILE"
-    print_color "${GREEN}" "✅ 서버가 재시작되었습니다. PID: $pid"
+    
+    log_message "서버가 시작되었습니다. PID: $pid"
+    print_color "${GREEN}" "✅ 서버가 시작되었습니다. PID: $pid"
+    print_color "${CYAN}" "📝 로그 파일: $DAILY_LOG_FILE"
+    sleep 2
 }
 
-# 함수: 사용자 선택
-ask_user() {
-    echo -e "${PURPLE}"
-    echo "╔════════════════════════════════════╗"
-    echo "║        ${WHITE}Palworld 서버 관리 스크립트${PURPLE}       ║"
-    echo "╠════════════════════════════════════╣"
-    echo -e "║  ${YELLOW}🚀 서버가 이미 실행 중입니다${PURPLE}           ║"
-    echo -e "║  ${CYAN}PID: $(cat "$PID_FILE")${PURPLE}                          ║"
-    echo "╠════════════════════════════════════╣"
-    echo -e "║  ${WHITE}1. ${RED}서버 종료${PURPLE}                           ║"
-    echo -e "║  ${WHITE}2. ${GREEN}서버 재시작${PURPLE}                         ║"
-    echo -e "║  ${WHITE}3. ${YELLOW}취소${PURPLE}                               ║"
-    echo "╚════════════════════════════════════╝"
-    echo -e "${NC}"
+# 함수: 서버 종료
+stop_server() {
+    print_color "${YELLOW}" "🛑 서버를 종료합니다..."
+    log_message "서버 종료 시도"
+    
+    # PalServer.sh 프로세스 종료
+    pkill -f "$PAL_SERVER_SCRIPT"
+    
+    # FEX-EMU 프로세스 종료
+    pkill -f "fex-emu.*PalServer-Linux-Shipping"
+    
+    sleep 3
+    
+    # 강제 종료 시도
+    if [ "$(check_pal_server_process)" = "RUNNING" ] || [ "$(check_fex_emu_process)" = "RUNNING" ]; then
+        print_color "${RED}" "⚠️  강제 종료를 시도합니다..."
+        log_message "강제 종료 시도"
+        pkill -9 -f "$PAL_SERVER_SCRIPT"
+        pkill -9 -f "fex-emu.*PalServer-Linux-Shipping"
+    fi
+    
+    # PID 파일 정리
+    rm -f "$PID_FILE" "$FEX_EMU_PID_FILE"
+    
+    log_message "서버가 종료되었습니다."
+    print_color "${GREEN}" "✅ 서버가 종료되었습니다."
+}
+
+# 함수: 로그 보기
+show_logs() {
+    print_color "${CYAN}" "📋 최근 서버 로그 20줄:"
+    echo -e "${PURPLE}==========================================${NC}"
+    if [ -f "$DAILY_LOG_FILE" ]; then
+        tail -20 "$DAILY_LOG_FILE"
+    else
+        print_color "${YELLOW}" "⚠️  로그 파일이 존재하지 않습니다."
+    fi
+    echo -e "${PURPLE}==========================================${NC}"
+    echo ""
+}
+
+# 함수: 서버 상태 표시
+show_server_status() {
+    local pal_status=$(check_pal_server_process)
+    local fex_status=$(check_fex_emu_process)
+    
+    echo -e "${BLUE}╔════════════════════════════════════╗"
+    echo -e "║           ${WHITE}서버 상태 정보${BLUE}           ║"
+    echo -e "╠════════════════════════════════════╣"
+    
+    if [ "$pal_status" = "RUNNING" ]; then
+        echo -e "║  ${GREEN}✅ PalServer.sh: 실행 중${BLUE}           ║"
+    else
+        echo -e "║  ${RED}❌ PalServer.sh: 중지됨${BLUE}            ║"
+    fi
+    
+    if [ "$fex_status" = "RUNNING" ]; then
+        echo -e "║  ${GREEN}✅ FEX-EMU 프로세스: 실행 중${BLUE}      ║"
+    else
+        echo -e "║  ${RED}❌ FEX-EMU 프로세스: 중지됨${BLUE}       ║"
+    fi
+    
+    echo -e "╠════════════════════════════════════╣"
+    echo -e "║  ${CYAN}📝 로그 파일: ${BLUE}                   ║"
+    echo -e "║  ${CYAN}$DAILY_LOG_FILE ${BLUE}║"
+    echo -e "╚════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+# 함수: 서버 실행 중일 때 메뉴
+server_running_menu() {
+    echo -e "${PURPLE}╔════════════════════════════════════╗"
+    echo -e "║     ${WHITE}PalWorld 서버 관리 메뉴${PURPLE}      ║"
+    echo -e "╠════════════════════════════════════╣"
+    echo -e "║  ${WHITE}1. ${RED}🔴 서버 중지${PURPLE}                     ║"
+    echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기${PURPLE}                     ║"
+    echo -e "║  ${WHITE}3. ${YELLOW}🚫 스크립트 종료${PURPLE}                 ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
+    echo ""
     
     echo -e "${BOLD}${CYAN}"
     read -p "선택해주세요 (1-3): " choice
@@ -95,26 +158,60 @@ ask_user() {
             stop_server
             ;;
         2)
-            restart_server
+            show_logs
+            server_running_menu
             ;;
         3)
-            print_color "${YELLOW}" "⚠️  작업을 취소합니다."
+            print_color "${YELLOW}" "⚠️  스크립트를 종료합니다."
             exit 0
             ;;
         *)
             print_color "${RED}" "❌ 잘못된 선택입니다. 1-3 사이의 숫자를 입력해주세요."
-            echo ""
-            ask_user
+            server_running_menu
             ;;
     esac
 }
 
-# 메인 실행
+# 함수: 서버 중지 시 메뉴
+server_stopped_menu() {
+    echo -e "${PURPLE}╔════════════════════════════════════╗"
+    echo -e "║     ${WHITE}PalWorld 서버 관리 메뉴${PURPLE}      ║"
+    echo -e "╠════════════════════════════════════╣"
+    echo -e "║  ${WHITE}1. ${GREEN}🚀 서버 시작${PURPLE}                     ║"
+    echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기${PURPLE}                     ║"
+    echo -e "║  ${WHITE}3. ${YELLOW}🚫 스크립트 종료${PURPLE}                 ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
+    echo ""
+    
+    echo -e "${BOLD}${CYAN}"
+    read -p "선택해주세요 (1-3): " choice
+    echo -e "${NC}"
+    
+    case $choice in
+        1)
+            start_server
+            ;;
+        2)
+            show_logs
+            server_stopped_menu
+            ;;
+        3)
+            print_color "${YELLOW}" "⚠️  스크립트를 종료합니다."
+            exit 0
+            ;;
+        *)
+            print_color "${RED}" "❌ 잘못된 선택입니다. 1-3 사이의 숫자를 입력해주세요."
+            server_stopped_menu
+            ;;
+    esac
+}
+
+# 메인 함수
 main() {
-    # Clear screen
+    # 화면 초기화
     clear
     
-    # Print header
+    # 헤더 출력
     echo -e "${BLUE}"
     echo "██████╗  █████╗ ██╗     ██╗    ██╗    ██╗ ██████╗ ██████╗ ██╗     ██████╗ "
     echo "██╔══██╗██╔══██╗██║     ██║    ██║    ██║██╔═══██╗██╔══██╗██║     ██╔══██╗"
@@ -125,31 +222,22 @@ main() {
     echo -e "${NC}"
     echo ""
     
-    status=$(check_server_status)
+    # 서버 상태 확인
+    local pal_status=$(check_pal_server_process)
+    local fex_status=$(check_fex_emu_process)
     
-    if [ "$status" = "RUNNING" ]; then
-        print_color "${GREEN}" "✅ 서버가 실행 중입니다 (PID: $(cat "$PID_FILE"))"
-        echo ""
-        ask_user
+    # 서버 상태 표시
+    show_server_status
+    
+    # 메뉴 표시
+    if [ "$pal_status" = "RUNNING" ] || [ "$fex_status" = "RUNNING" ]; then
+        print_color "${GREEN}" "✅ 서버가 실행 중입니다."
+        server_running_menu
     else
         print_color "${YELLOW}" "⚠️  서버가 실행 중이 아닙니다."
-        echo ""
-        echo -e "${BOLD}${CYAN}"
-        read -p "서버를 시작하시겠습니까? (y/N): " start_choice
-        echo -e "${NC}"
-        
-        if [[ "$start_choice" =~ ^[Yy]$ ]]; then
-            print_color "${CYAN}" "🚀 서버를 시작합니다..."
-            nohup "$PAL_SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
-            local pid=$!
-            echo $pid > "$PID_FILE"
-            print_color "${GREEN}" "✅ 서버가 시작되었습니다. PID: $pid"
-        else
-            print_color "${YELLOW}" "⚠️  작업을 취소합니다."
-            exit 0
-        fi
+        server_stopped_menu
     fi
 }
 
-# 실행
+# 스크립트 실행
 main
