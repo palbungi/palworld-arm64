@@ -33,7 +33,7 @@ check_pal_binary_process() {
 # 함수: RCON 명령어 실행
 rcon() {
     local command="$1"
-    echo "$command" | /usr/games/arcon -P $RCON_PORT -p "$ADMIN_PASSWORD" 2>/dev/null
+    echo "$command" | ./ARRCON -P $RCON_PORT -p "$ADMIN_PASSWORD" 2>/dev/null
 }
 
 # 함수: 서버 시작
