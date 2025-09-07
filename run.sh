@@ -18,6 +18,11 @@ DAILY_LOG_FILE="$LOG_DIR/palworld-server-$(date +%Y-%m-%d).log"
 PID_FILE="/tmp/palworld_server.pid"
 FEX_EMU_PID_FILE="/tmp/palworld_fex_emu.pid"
 
+# RCON 설정
+RCON_PORT=25575
+ADMIN_PASSWORD="palbungi1126#"
+REBOOT_MSG="Server_is_going_to_reboot_in_"
+
 # 로그 디렉토리 생성
 mkdir -p "$LOG_DIR"
 
@@ -62,6 +67,12 @@ check_pal_binary_process() {
     fi
 }
 
+# 함수: RCON 명령어 실행
+rcon_command() {
+    local command="$1"
+    echo "$command" | /usr/games/arcon -P $RCON_PORT -p "$ADMIN_PASSWORD" 2>/dev/null
+}
+
 # 함수: 서버 시작
 start_server() {
     print_color "${CYAN}" "🚀 PalWorld 서버를 시작합니다..."
@@ -82,6 +93,14 @@ start_server() {
 stop_server() {
     print_color "${YELLOW}" "🛑 서버를 종료합니다..."
     log_message "서버 종료 시도"
+    
+    # RCON을 통해 정상 종료 시도
+    if [ "$(check_pal_binary_process)" = "RUNNING" ]; then
+        print_color "${CYAN}" "📢 RCON을 통해 정상 종료를 시도합니다..."
+        rcon_command "save"
+        rcon_command "shutdown 10 Server_shutting_down_in_10_seconds"
+        sleep 15
+    fi
     
     # 모든 관련 프로세스 종료
     pkill -f "$PAL_SERVER_SCRIPT"
@@ -106,6 +125,41 @@ stop_server() {
     
     log_message "서버가 종료되었습니다."
     print_color "${GREEN}" "✅ 서버가 종료되었습니다."
+}
+
+# 함수: 서버 재시작
+restart_server() {
+    print_color "${PURPLE}" "🔄 서버를 재시작합니다..."
+    log_message "서버 재시작 시도"
+    
+    # RCON을 통해 재시작 알림 및 저장
+    if [ "$(check_pal_binary_process)" = "RUNNING" ]; then
+        print_color "${CYAN}" "📢 RCON을 통해 재시작 알림을 보냅니다..."
+        rcon_command "save"
+        rcon_command "shutdown 10 ${REBOOT_MSG}10_sec"
+        
+        # 카운트다운 출력
+        print_color "${YELLOW}" "⏰ 10초 후 서버가 재시작됩니다..."
+        for i in {9..1}; do
+            print_color "${YELLOW}" "⏰ ${i}초 남음..."
+            sleep 1
+        done
+        sleep 1
+    else
+        print_color "${YELLOW}" "⚠️  RCON 연결 불가 - 즉시 재시작합니다..."
+    fi
+    
+    # 서버 종료
+    stop_server
+    
+    # 잠시 대기
+    sleep 2
+    
+    # 서버 시작
+    start_server
+    
+    log_message "서버 재시작 완료"
+    print_color "${GREEN}" "✅ 서버 재시작이 완료되었습니다."
 }
 
 # 함수: 로그 보기
@@ -162,13 +216,14 @@ server_running_menu() {
     echo -e "║     PalWorld 서버 관리 메뉴        ║"
     echo -e "╠════════════════════════════════════╣"
     echo -e "║  ${WHITE}1. ${RED}🔴 서버 중지${PURPLE}                   ║"
-    echo -e "║  ${WHITE}2. ${CYAN}📋 로그 보기${PURPLE}                   ║"
-    echo -e "║  ${WHITE}3. ${YELLOW}🚫 스크립트 종료${PURPLE}               ║"
+    echo -e "║  ${WHITE}2. ${BLUE}🔄 서버 재시작${PURPLE}                 ║"
+    echo -e "║  ${WHITE}3. ${CYAN}📋 로그 보기${PURPLE}                   ║"
+    echo -e "║  ${WHITE}4. ${YELLOW}🚫 스크립트 종료${PURPLE}               ║"
     echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
     
     echo -e "${BOLD}${CYAN}"
-    read -p "선택해주세요 (1-3): " choice
+    read -p "선택해주세요 (1-4): " choice
     echo -e "${NC}"
     
     case $choice in
@@ -176,15 +231,18 @@ server_running_menu() {
             stop_server
             ;;
         2)
+            restart_server
+            ;;
+        3)
             show_logs
             server_running_menu
             ;;
-        3)
+        4)
             print_color "${YELLOW}" "⚠️  스크립트를 종료합니다."
             exit 0
             ;;
         *)
-            print_color "${RED}" "❌ 잘못된 선택입니다. 1-3 사이의 숫자를 입력해주세요."
+            print_color "${RED}" "❌ 잘못된 선택입니다. 1-4 사이의 숫자를 입력해주세요."
             server_running_menu
             ;;
     esac
@@ -231,12 +289,12 @@ main() {
     
     # 헤더 출력
     echo -e "${BLUE}"
-    echo "██████╗  █████╗ ██╗     ██╗    ██╗    ██╗ ██████╗ ██████╗ ██╗     ██████╗ "
-    echo "██╔══██╗██╔══██╗██║     ██║    ██║    ██║██╔═══██╗██╔══██╗██║     ██╔══██╗"
-    echo "██████╔╝███████║██║     ██║    ██║ █╗ ██║██║   ██║██████╔╝██║     ██║  ██║"
-    echo "██╔═══╝ ██╔══██║██║     ██║    ██║███╗██║██║   ██║██╔══██╗██║     ██║  ██║"
-    echo "██║     ██║  ██║███████╗███████║╚███╔███╔╝╚██████╔╝██║  ██║███████╗██████╔╝"
-    echo "╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝ ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═════╝ "
+    echo "██████╗  █████╗ ██╗    ██╗    ██╗ ██████╗ ██████╗ ██╗     ██████╗ "
+    echo "██╔══██╗██╔══██╗██║    ██║    ██║██╔═══██╗██╔══██╗██║     ██╔══██╗"
+    echo "██████╔╝███████║██║    ██║ █╗ ██║██║   ██║██████╔╝██║     ██║  ██║"
+    echo "██╔═══╝ ██╔══██║██║    ██║███╗██║██║   ██║██╔══██╗██║     ██║  ██║"
+    echo "██║     ██║  ██║███████║╚███╔███╔╝╚██████╔╝██║  ██║███████╗██████╔╝"
+    echo "╚═╝     ╚═╝  ╚═╝╚══════╝ ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═════╝ "
     echo -e "${NC}"
     echo ""
     
